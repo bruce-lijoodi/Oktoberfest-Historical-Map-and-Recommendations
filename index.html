@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍺🍾Oktoberfest History Map and Recommendations🍾🍺</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .info-box {
+            position: absolute;
+            top: 20px;
+            left: 60px;
+            background-color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+        }
+        
+        .info-box h2 {
+            margin: 0 0 5px 0;
+            font-size: 20px;
+            color: #0066cc;
+        }
+        
+        .info-box p {
+            margin: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        .legend-box {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    min-width: 400px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 15px;
+}
+
+.legend-box h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #333;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.legend-box h3:hover {
+    background-color: #e8f4f8;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.legend-item:hover {
+    background-color: #f0f0f0;
+}
+
+.legend-item.inactive {
+    opacity: 0.4;
+}
+
+.legend-item.inactive:hover {
+    opacity: 0.6;
+}
+
+.legend-item:last-child {
+    margin-bottom: 0;
+}
+
+.legend-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    width: 25px;
+    text-align: center;
+}
+
+.legend-text {
+    font-size: 14px;
+    color: #333;
+}
+.timeline-slider {
+    position: absolute;
+    bottom: 30px;
+    left: 60px;
+    background-color: white;
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    min-width: 250px;
+}
+
+.timeline-slider h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.slider-container {
+    position: relative;
+    height: 40px;
+    margin-bottom: 10px;
+}
+
+.slider-container input[type="range"] {
+    position: absolute;
+    width: 100%;
+    pointer-events: none;
+    -webkit-appearance: none;
+    background: transparent;
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    pointer-events: all;
+    -webkit-appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #0066cc;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.slider-container input[type="range"]::-moz-range-thumb {
+    pointer-events: all;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #0066cc;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.slider-container input[type="range"]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    border-radius: 4px;
+}
+
+.slider-container input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 8px;
+    background: #ddd;
+    border-radius: 4px;
+}
+
+.year-display {
+    font-size: 14px;
+    color: #333;
+    font-weight: bold;
+    text-align: center;
+}
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="info-box">
+        <h2>🍺🍾Oktoberfest History Map and Recommendations🍾🍺</h2>
+        <p>Theresienwiese, Munich</p>
+    </div>
+
+
+    <div class="timeline-slider">
+    <h3>Timeline Filter</h3>
+    <div class="slider-container">
+        <input type="range" id="yearStart" min="1810" max="2024" value="1810" step="1">
+        <input type="range" id="yearEnd" min="1810" max="2024" value="2024" step="1">
+    </div>
+    <div class="year-display">
+        <span id="startYear">1810</span> - <span id="endYear">2024</span>
+        <span id="eventCount" style="margin-left: 10px; color: #666;"></span>
+    </div>
+</div>
+
+    <div class="legend-box">
+    <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #333;">Legend</h3>
+    <div class="legend-item">
+        <span class="legend-icon">🐴</span>
+        <span class="legend-text">Horse Racing</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🚴‍♂️</span>
+        <span class="legend-text">Bicycle Race</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🏛️</span>
+        <span class="legend-text">Museums</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🏰</span>
+        <span class="legend-text">Castles</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🎡</span>
+        <span class="legend-text">Wheels and Rides</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🏆</span>
+        <span class="legend-text">Championships</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">👺</span>
+        <span class="legend-text">Costumes</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🧑🏻‍🌾</span>
+        <span class="legend-text">Agricultural Festival</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🎬</span>
+        <span class="legend-text">Theater Show</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🎈</span>
+        <span class="legend-text">Balloonist Landing</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">💣</span>
+        <span class="legend-text">Bombings</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🎵</span>
+        <span class="legend-text">Music</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">🍺</span>
+        <span class="legend-text">Beer and Scenaries</span>
+    </div>
+    <div class="legend-item">
+        <span class="legend-icon">👑</span>
+        <span class="legend-text">Royal Wedding</span>
+    </div>
+</div>
+    <!-- Leaflet JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <script>
+        // Step 1: Create the map centered on Munich (Theresienwiese - Oktoberfest location)
+        // [48.1318, 11.5497] = latitude and longitude
+        // 13 = zoom level (higher numbers = more zoomed in)
+        const map = L.map('map').setView([48.1318, 11.5497], 14);
+        // Store markers by category for filtering
+        const markersByCategory = {};
+
+        // Step 2: Add the tile layer (the actual map images from OpenStreetMap)
+        // Define multiple basemap options
+const baseMaps = {
+    "Streets": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19
+    }),
+    "Satellite": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri',
+        maxZoom: 19
+    }),
+    "Terrain": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenTopoMap contributors',
+        maxZoom: 17
+    }),
+    "Dark Mode": L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO',
+        maxZoom: 19
+    })
+};
+
+// Add the default basemap (Streets)
+baseMaps["Streets"].addTo(map);
+
+// Add layer control to switch between basemaps
+L.control.layers(baseMaps).addTo(map);
+        
+        console.log('Map initialized successfully!');
+
+        // Load the GeoJSON file
+fetch('Oktoberfest_Events.geojson')
+    .then(response => response.json())
+    .then(data => {
+        // Add the GeoJSON layer to the map
+        // Function to create custom markers with emoji icons and year labels
+function createYearMarker(year, category) {
+    // Choose emoji and color based on category
+    let emoji, color;
+    switch(category) {
+        case 'Horse Racing': 
+            emoji = '🐴'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Bicycle Race': 
+            emoji = '🚴‍♂️'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Museums': 
+            emoji = '🏛️'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Castles': 
+            emoji = '🏰'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Wheels and Rides': 
+            emoji = '🎡'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Championships': 
+            emoji = '🏆'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Costumes': 
+            emoji = '👺'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Agricultural Festival': 
+            emoji = '🧑🏻‍🌾'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Theater Show': 
+            emoji = '🎬'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Balloonist Landing': 
+            emoji = '🎈'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Bombings': 
+            emoji = '💣';
+            color = '#4ECDC4'; 
+            break;
+        case 'Food': 
+            emoji = '🍖'; 
+            color = '#FF6B35'; 
+            break;
+        case 'Music': 
+            emoji = '🎵'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Beer and Scenaries': 
+            emoji = '🍺'; 
+            color = '#4ECDC4'; 
+            break;
+        case 'Royal Wedding': 
+            emoji = '👑'; 
+            color = '#4ECDC4'; 
+            break;
+        default: 
+            emoji = '📍'; 
+            color = '#0066cc';
+    }
+    
+    return L.divIcon({
+        className: 'custom-year-marker',
+        html: `<div style="
+            background-color: ${color};
+            color: white;
+            width: 60px;
+            height: 70px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            font-family: Arial, sans-serif;
+        ">
+            <div style="font-size: 24px; margin-bottom: 2px;">${emoji}</div>
+            <div style="font-size: 11px;">${year}</div>
+        </div>`,
+        iconSize: [60, 70],
+        iconAnchor: [30, 70]
+    });
+}
+        
+        L.geoJSON(data, {
+    pointToLayer: function(feature, latlng) {
+        const year = feature.properties.Event_Date;
+        const category = feature.properties.Category;
+        const marker = L.marker(latlng, {
+            icon: createYearMarker(year, category)
+        });
+
+        // Attach feature data to marker for year filtering
+        marker.feature = feature;
+
+        // Store markers by category for filtering
+        if (!markersByCategory[category]) {
+            markersByCategory[category] = [];
+        }
+        markersByCategory[category].push(marker);
+
+        return marker;
+    },
+            onEachFeature: function(feature, layer) {
+                const props = feature.properties;
+                
+                // Create popup content
+                const popupContent = `
+                    <div style="font-family: Arial; max-width: 300px;">
+                        <h3 style="margin: 0 0 10px 0; color: #0066cc;">
+                            ${props.Event_Date} - ${props.Event_Name}
+                        </h3>
+                        ${props.Media_URL ? `
+                            <img src="${props.Media_URL}" 
+                                 style="width: 100%; height: auto; margin-bottom: 10px; border-radius: 4px;" 
+                                 alt="${props.Event_Name}">
+                        ` : ''}
+                        <p style="margin: 0 0 10px 0; font-size: 14px;">
+                            ${props.Event_Description}
+                        </p>
+                        <p style="margin: 0 0 5px 0; font-size: 12px; color: #666;">
+                            <strong>Category:</strong> ${props.Category}
+                        </p>
+                        ${props.Modern_Recommendations ? `
+                            <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px;">
+                                ${props.Modern_Recommendations}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+                
+                layer.bindPopup(popupContent);
+            }
+        }).addTo(map);
+        
+        console.log('GeoJSON loaded successfully!');
+
+
+
+        // Add click handlers to legend items for filtering
+const legendItems = document.querySelectorAll('.legend-item');
+const activeCategories = new Set();
+
+// Initialize all categories as active
+Object.keys(markersByCategory).forEach(category => {
+    activeCategories.add(category);
+});
+
+
+// Click legend title to show all categories
+document.querySelector('.legend-box h3').addEventListener('click', function() {
+    // Clear and re-add all categories
+    activeCategories.clear();
+    Object.keys(markersByCategory).forEach(category => {
+        activeCategories.add(category);
+    });
+    
+    // Remove inactive class from all legend items
+    legendItems.forEach(item => {
+        item.classList.remove('inactive');
+    });
+    
+    // Show all markers
+    Object.values(markersByCategory).forEach(markers => {
+        markers.forEach(marker => {
+            map.addLayer(marker);
+        });
+    });
+    
+    console.log('Showing all categories');
+});
+
+
+// Add click event to each legend item
+legendItems.forEach(item => {
+    item.addEventListener('click', function(event) {
+        const categoryName = this.querySelector('.legend-text').textContent;
+        
+        if (event.ctrlKey || event.metaKey) {
+            // Ctrl+Click: Toggle this category (multi-select)
+            if (activeCategories.has(categoryName)) {
+                // Remove from active
+                activeCategories.delete(categoryName);
+                this.classList.add('inactive');
+                
+                // Hide markers
+                if (markersByCategory[categoryName]) {
+                    markersByCategory[categoryName].forEach(marker => {
+                        map.removeLayer(marker);
+                    });
+                }
+            } else {
+                // Add to active
+                activeCategories.add(categoryName);
+                this.classList.remove('inactive');
+                
+                // Show markers
+                if (markersByCategory[categoryName]) {
+                    markersByCategory[categoryName].forEach(marker => {
+                        map.addLayer(marker);
+                    });
+                }
+            }
+        } else {
+            // Regular Click: Show ONLY this category
+            
+            // First, hide all categories
+            activeCategories.clear();
+            legendItems.forEach(legendItem => {
+                legendItem.classList.add('inactive');
+            });
+            
+            // Hide all markers
+            Object.values(markersByCategory).forEach(markers => {
+                markers.forEach(marker => {
+                    map.removeLayer(marker);
+                });
+            });
+            
+            // Then, show only the clicked category
+            activeCategories.add(categoryName);
+            this.classList.remove('inactive');
+            
+            if (markersByCategory[categoryName]) {
+                markersByCategory[categoryName].forEach(marker => {
+                    map.addLayer(marker);
+                });
+            }
+        }
+    });
+});
+
+// Timeline slider functionality
+const yearStartSlider = document.getElementById('yearStart');
+const yearEndSlider = document.getElementById('yearEnd');
+const startYearDisplay = document.getElementById('startYear');
+const endYearDisplay = document.getElementById('endYear');
+const eventCountDisplay = document.getElementById('eventCount');
+
+// Function to filter markers by year range
+function filterByYearRange(startYear, endYear) {
+    let visibleCount = 0;
+    
+    // Go through each category
+    Object.keys(markersByCategory).forEach(category => {
+        // Check if this category is active (selected in legend)
+        const isActive = activeCategories.has(category);
+        
+        // Go through each marker in this category
+        markersByCategory[category].forEach(marker => {
+            // Get the year from the marker
+            const feature = marker.feature;
+            const eventYear = parseInt(feature.properties.Event_Date);
+            
+            // Check if marker should be visible (within year range AND category is active)
+            if (eventYear >= startYear && eventYear <= endYear && isActive) {
+                map.addLayer(marker);
+                visibleCount++;
+            } else {
+                map.removeLayer(marker);
+            }
+        });
+    });
+    
+    // Update event count display
+    eventCountDisplay.textContent = `(${visibleCount} events)`;
+}
+
+// Update start year slider
+yearStartSlider.addEventListener('input', function() {
+    let startYear = parseInt(this.value);
+    let endYear = parseInt(yearEndSlider.value);
+    
+    // Make sure start year doesn't exceed end year
+    if (startYear > endYear) {
+        startYear = endYear;
+        this.value = startYear;
+    }
+    
+    startYearDisplay.textContent = startYear;
+    filterByYearRange(startYear, endYear);
+});
+
+// Update end year slider
+yearEndSlider.addEventListener('input', function() {
+    let endYear = parseInt(this.value);
+    let startYear = parseInt(yearStartSlider.value);
+    
+    // Make sure end year isn't less than start year
+    if (endYear < startYear) {
+        endYear = startYear;
+        this.value = endYear;
+    }
+    
+    endYearDisplay.textContent = endYear;
+    filterByYearRange(startYear, endYear);
+});
+
+// Initial event count
+filterByYearRange(1810, 2024);
+    })
+    .catch(error => {
+        console.error('Error loading GeoJSON:', error);
+    });
+    </script>
+</body>
+</html>
