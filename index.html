@@ -254,7 +254,18 @@
 
     .legend-box::-webkit-scrollbar-thumb:hover {
     background: #004999;
-    }    
+    }
+    /* Add fade effect at bottom of legend to hint at more content */
+    .legend-box::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(to bottom, transparent, white);
+    pointer-events: none;   
+    }  
     
     .legend-box h3 {
         font-size: 12px;
