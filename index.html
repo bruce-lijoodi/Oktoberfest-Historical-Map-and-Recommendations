@@ -185,6 +185,14 @@
     font-weight: bold;
     text-align: center;
 }
+/* Fade out UI elements when popup is open */
+.hide-ui .info-box,
+.hide-ui .legend-box,
+.hide-ui .timeline-slider {
+    opacity: 0.2;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
 /* Mobile Responsive Styles */
 @media screen and (max-width: 768px) {
     /* Make info box smaller and reposition */
@@ -315,9 +323,35 @@
         box-shadow: inset 0 -15px 10px -10px rgba(0,0,0,0.1);
     }
 }
+/* Zoom limit notification */
+.zoom-notification {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 102, 204, 0.95);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    z-index: 10000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.zoom-notification.show {
+    opacity: 1;
+}
     </style>
 </head>
 <body>
+    <div class="zoom-notification" id="zoomNotification">
+        You have reached the maximum zoom-out level.
+    </div>
+
     <div id="map"></div>
     
     <div class="info-box">
@@ -404,7 +438,26 @@
         // Step 1: Create the map centered on Munich (Theresienwiese - Oktoberfest location)
         // [48.1318, 11.5497] = latitude and longitude
         // 13 = zoom level (higher numbers = more zoomed in)
-        const map = L.map('map').setView([48.1318, 11.5497], 14);
+        const map = L.map('map', {
+            minZoom: 15, //Users cannot zoom out beyond level 15
+            
+        });
+
+        //Function to show zoom limit notification
+        function showZoomNotification() {
+            const notification = document.getElementById('zoomNotification');
+            notification.classList.add('show');
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 2000); // Hide after 2 seconds
+        }
+
+        //Detect when users hit zoom limit
+        map.on('zoomend', function() {
+            if (map.getZoom() === map.getMinZoom()) {
+                showZoomNotification();
+            }
+        });
         // Store markers by category for filtering
         const markersByCategory = {};
 
@@ -584,11 +637,43 @@ function createYearMarker(year, category) {
                     </div>
                 `;
                 
-                layer.bindPopup(popupContent);
+                layer.bindPopup(popupContent, {
+                    maxWidth: 350,
+                    minwidth: 300,
+                    closeButton: true,
+                    autopan: false
+                });
             }
         }).addTo(map);
         
         console.log('GeoJSON loaded successfully!');
+
+        // Hide UI elements when popup opens, show when popup closes
+map.on('popupopen', function() {
+    document.body.classList.add('hide-ui');
+});
+
+map.on('popupclose', function() {
+    document.body.classList.remove('hide-ui');
+});
+
+// Set initial view to show all markers
+const allMarkers = [];
+Object.values(markersByCategory).forEach(markers => {
+    markers.forEach(marker => {
+        allMarkers.push(marker);
+    });
+});
+if (allMarkers.length > 0) {
+    const group = L.featureGroup(allMarkers);
+    map.fitBounds(group.getBounds(), { 
+        padding: [50, 50],
+        maxZoom: 13
+    });
+} else {
+    // Fallback if no markers loaded
+    map.setView([48.1318, 11.5497], 13);
+}
 
 
 
