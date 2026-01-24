@@ -7,7 +7,9 @@
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-    
+
+ 
+
     <style>
         body {
             margin: 0;
@@ -345,6 +347,95 @@
 .zoom-notification.show {
     opacity: 1;
 }
+/* Virtual Tour Button */
+.virtual-tour-button {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #0066cc;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.virtual-tour-button:hover {
+    background-color: #004999;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.virtual-tour-button:active {
+    transform: translateY(0);
+}
+
+/* Mobile responsive */
+@media screen and (max-width: 768px) {
+    .virtual-tour-button {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
+
+/* Rotation Controls */
+#rotationControls {
+    position: absolute;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+}
+
+#rotationControls button {
+    background-color: white;
+    color: #0066cc;
+    border: 2px solid #0066cc;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+}
+
+#rotationControls button:hover {
+    background-color: #0066cc;
+    color: white;
+    transform: translateY(-2px);
+}
+
+#rotationControls button:active {
+    transform: translateY(0);
+}
+
+@media screen and (max-width: 768px) {
+    #rotationControls {
+        bottom: 60px;
+    }
+    
+    #rotationControls button {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+}
+
     </style>
 </head>
 <body>
@@ -357,6 +448,14 @@
     <div class="info-box">
         <h2>🍺🍾Oktoberfest History Map and Recommendations🍾🍺</h2>
         <p>Theresienwiese, Munich</p>
+    </div>
+    <div class="virtual-tour-button" id="virtualTourBtn" title="Take a Virtual Tour of Theresienwiese" style="display: none;">
+    📷 Loading Tour...
+    </div>
+
+    <div id="rotationControls" style="display: none;">
+        <button id="rotateLeft" title="Rotate Left">↺ Rotate Left</button>
+        <button id="rotateRight" title="Rotate Right">Rotate Right ↻</button>
     </div>
 
 
@@ -434,12 +533,20 @@
     <!-- Leaflet JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     
+       <!-- Georaster libraries -->
+    <script src="https://unpkg.com/georaster@1.5.6/dist/georaster.browser.bundle.min.js"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
     <script>
+
+        // Set different zoom limits for mobile vs desktop
+        const isMobile = window.innerWidth <= 768;
+        const minZoomLevel = isMobile ? 12 : 15; // Mobile can zoom out more
+        
         // Step 1: Create the map centered on Munich (Theresienwiese - Oktoberfest location)
         // [48.1318, 11.5497] = latitude and longitude
         // 13 = zoom level (higher numbers = more zoomed in)
         const map = L.map('map', {
-            minZoom: 15, //Users cannot zoom out beyond level 15
+            minZoom: minZoomLevel, //Users cannot zoom out beyond level 15
             
         });
 
@@ -485,10 +592,18 @@ const baseMaps = {
 // Add the default basemap (Streets)
 baseMaps["Streets"].addTo(map);
 
-// Add layer control to switch between basemaps
-L.control.layers(baseMaps).addTo(map);
+
+
+
         
-        console.log('Map initialized successfully!');
+console.log('Map initialized successfully!');
+
+// Rotation function (defined early so it's available everywhere)
+function rotateMap(angle) {
+    const mapContainer = document.getElementById('map');
+    mapContainer.style.transform = `rotate(${angle}deg)`;
+    mapContainer.style.transition = 'transform 0.5s ease';
+}
 
         // Load the GeoJSON file
 fetch('MuseumData.geojson')
@@ -675,6 +790,51 @@ if (allMarkers.length > 0) {
     map.setView([48.1318, 11.5497], 13);
 }
 
+
+// Load GeoTIFF overlay
+fetch('Theresienwiese_compressed.tif')
+  .then(response => response.arrayBuffer())
+  .then(arrayBuffer => {
+    parseGeoraster(arrayBuffer).then(georaster => {
+      let geoRasterLayer = new GeoRasterLayer({
+        georaster: georaster,
+        opacity: 0.7,
+        resolution: 256
+      });
+      //Store it globally so Virtual Tour button can access it
+    window.theresienweiseLayer = geoRasterLayer;
+    window.theresienweiseBounds = georaster.bounds;
+    window.tourLayerReady = true;
+    window.currentRotation = 0;
+
+    //Update button to show it's ready
+    const tourBtn = document.getElementById('virtualTourBtn');
+    tourBtn.textContent = '📷 Virtual Tour';
+    tourBtn.style.opacity = '1';
+
+// Add to layer control so users can toggle it on/off
+baseMaps["Theresienwiese Image"] = geoRasterLayer;
+
+
+
+      
+      // Add to layer control so users can toggle it on/off
+      baseMaps["Theresienwiese Image"] = geoRasterLayer;
+      
+      // Refresh layer control
+      map.eachLayer(layer => {
+        if (layer instanceof L.Control.Layers) {
+          map.removeLayer(layer);
+        }
+      });
+      L.control.layers(baseMaps).addTo(map);
+      
+      console.log('GeoTIFF loaded successfully!');
+    });
+  })
+  .catch(error => {
+    console.error('Error loading GeoTIFF:', error);
+  });
 
 
         // Add click handlers to legend items for filtering
@@ -864,6 +1024,91 @@ filterByYearRange(1810, 2024);
     .catch(error => {
         console.error('Error loading GeoJSON:', error);
     });
+// Virtual Tour Button - Opens Google Street View of Theresienwiese
+// Virtual Tour Button - Toggle Theresienwiese Overlay
+let tourActive = false;
+
+document.getElementById('virtualTourBtn').addEventListener('click', function() {
+    if (!window.tourLayerReady) {
+    alert('Virtual tour is loading... (6.9MB file). Please wait a moment and try again.');
+    return;
+    }
+    
+if (tourActive) {
+    // Turn OFF virtual tour
+    map.removeLayer(window.theresienweiseLayer);
+    this.style.backgroundColor = '#0066cc';
+    this.innerHTML = '📷 Virtual Tour';
+    tourActive = false;
+
+    // Hide rotation controls
+    document.getElementById('rotationControls').style.display = 'none';
+
+    // Show basemap again
+baseMaps["Streets"].addTo(map);
+    
+    // Show basemap again
+    baseMaps["Streets"].addTo(map);
+    
+    // Show basemap again
+    baseMaps["Streets"].addTo(map);
+    
+    // Zoom back to show all markers
+    const allMarkers = [];
+    Object.values(markersByCategory).forEach(markers => {
+        allMarkers.push(...markers);
+    });
+    if (allMarkers.length > 0) {
+        const group = L.featureGroup(allMarkers);
+        map.fitBounds(group.getBounds(), { 
+            padding: [50, 50],
+            maxZoom: 13
+        });
+    }
+} else {
+    // Turn ON virtual tour
+    
+    // Hide all basemaps first
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+        }
+    });
+    
+    // Show only Theresienwiese image
+    map.addLayer(window.theresienweiseLayer);
+    this.style.backgroundColor = '#FF6B35'; // Orange when active
+    this.innerHTML = '✕ Exit Tour';
+    tourActive = true;
+
+    // Show rotation controls
+    document.getElementById('rotationControls').style.display = 'flex';
+    
+    // Zoom to fit the overlay
+    if (window.theresienweiseBounds) {
+        const bounds = [
+            [window.theresienweiseBounds[1], window.theresienweiseBounds[0]], // SW corner
+            [window.theresienweiseBounds[3], window.theresienweiseBounds[2]]  // NE corner
+        ];
+        map.fitBounds(bounds, { padding: [30, 30] });
+    }
+}
+// Rotation button handlers
+document.getElementById('rotateLeft').addEventListener('click', function() {
+    window.currentRotation -= 90;
+    if (window.currentRotation < 0) window.currentRotation = 270;
+    rotateMap(window.currentRotation);
+});
+
+document.getElementById('rotateRight').addEventListener('click', function() {
+    window.currentRotation += 90;
+    if (window.currentRotation >= 360) window.currentRotation = 0;
+    rotateMap(window.currentRotation);
+});
+
+
+
+});
     </script>
 </body>
 </html>
