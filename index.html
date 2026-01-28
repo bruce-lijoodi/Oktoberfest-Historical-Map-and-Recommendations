@@ -348,7 +348,7 @@
     opacity: 1;
 }
 /* Virtual Tour Button */
-.virtual-tour-button {
+.virtual-tent-tour-button {
     position: absolute;
     bottom: 20px;
     left: 50%;
@@ -369,19 +369,19 @@
     gap: 8px;
 }
 
-.virtual-tour-button:hover {
+.virtual-tent-tour-button:hover {
     background-color: #004999;
-    transform: translateY(-2px);
+    transform: translateX(-50%) translateY(-2px);
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
 }
 
-.virtual-tour-button:active {
-    transform: translateY(0);
+.virtual-tent-tour-button:active {
+    transform: translateX(-50%) translateY(0);
 }
 
 /* Mobile responsive */
 @media screen and (max-width: 768px) {
-    .virtual-tour-button {
+    .virtual-tent-tour-button {
         top: 10px;
         right: 10px;
         padding: 8px 12px;
@@ -436,6 +436,50 @@
     }
 }
 
+/* Tent Legend Box */
+.tent-legend-box {
+    position: absolute;
+    bottom: 250px;
+    right: 20px;
+    background-color: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    display: none;
+}
+
+.tent-legend-box h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+    color: #FF6B35;
+}
+
+.tent-legend-box .legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 5px 8px;
+}
+
+.tent-legend-box .tent-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-right: 10px;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.tent-legend-box .legend-text {
+    font-size: 14px;
+    color: #333;
+}
     </style>
 </head>
 <body>
@@ -449,7 +493,8 @@
         <h2>🍺🍾Oktoberfest History Map and Recommendations🍾🍺</h2>
         <p>Theresienwiese, Munich</p>
     </div>
-    <div class="virtual-tour-button" id="virtualTourBtn" title="Take a Virtual Tour of Theresienwiese" style="display: none;">
+    <!-- FIX 1: Removed display:none so button is visible while loading -->
+    <div class="virtual-tent-tour-button" id="virtualTourBtn" title="Take a Virtual Tour of Theresienwiese">
     📷 Loading Tour...
     </div>
 
@@ -477,6 +522,7 @@
         <span class="legend-icon">🐴</span>
         <span class="legend-text">Horse Racing</span>
     </div>
+
     <div class="legend-item">
         <span class="legend-icon">🚴‍♂️</span>
         <span class="legend-text">Bicycle Race</span>
@@ -530,6 +576,19 @@
         <span class="legend-text">Royal Wedding</span>
     </div>
 </div>
+
+<!-- Tent Legend (shown only during Virtual Tour) -->
+<div class="tent-legend-box" id="tentLegend">
+    <h3>🏕️ Beer Tents</h3>
+    <div class="legend-item">
+        <div class="tent-icon" style="background-color: #FF6B35;">🏕️</div>
+        <span class="legend-text">Large Tents (18)</span>
+    </div>
+    <div class="legend-item">
+        <div class="tent-icon" style="background-color: #FFD700;">🏕️</div>
+        <span class="legend-text">Small Tents (21)</span>
+    </div>
+</div>
     <!-- Leaflet JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     
@@ -567,6 +626,73 @@
         });
         // Store markers by category for filtering
         const markersByCategory = {};
+// Coordinate Picker Tool (for adding tent locations)
+let pickerMode = false;
+let pickerMarker = null;
+
+// Create picker toggle button
+const pickerButton = L.control({position: 'topright'});
+pickerButton.onAdd = function() {
+    const div = L.DomUtil.create('div', 'picker-button');
+    div.innerHTML = '📍 Pick Coordinates';
+    div.style.cssText = 'background: white; padding: 8px 12px; border: 2px solid #0066cc; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 12px;';
+    
+    div.onclick = function() {
+        pickerMode = !pickerMode;
+        if (pickerMode) {
+            div.style.backgroundColor = '#0066cc';
+            div.style.color = 'white';
+            div.innerHTML = '✓ Picking Mode ON';
+            alert('Click anywhere on the map to get coordinates!');
+        } else {
+            div.style.backgroundColor = 'white';
+            div.style.color = 'black';
+            div.innerHTML = '📍 Pick Coordinates';
+            if (pickerMarker) {
+                map.removeLayer(pickerMarker);
+                pickerMarker = null;
+            }
+        }
+    };
+    return div;
+};
+pickerButton.addTo(map);
+
+// Click handler for coordinate picking
+map.on('click', function(e) {
+    if (pickerMode) {
+        const lat = e.latlng.lat.toFixed(6);
+        const lng = e.latlng.lng.toFixed(6);
+        
+        // Remove old marker if exists
+        if (pickerMarker) {
+            map.removeLayer(pickerMarker);
+        }
+        
+        // Add new marker
+        pickerMarker = L.marker(e.latlng).addTo(map);
+        
+        // Show popup with coordinates
+        const popup = L.popup()
+            .setLatLng(e.latlng)
+            .setContent(`
+                <div style="font-family: Arial; text-align: center;">
+                    <strong>Coordinates:</strong><br>
+                    <input type="text" value="${lat}, ${lng}" id="coordText" 
+                           style="width: 180px; padding: 5px; margin: 5px 0; text-align: center;" readonly>
+                    <br>
+                    <button onclick="
+                        document.getElementById('coordText').select();
+                        document.execCommand('copy');
+                        alert('Coordinates copied!');
+                    " style="background: #0066cc; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer;">
+                        Copy
+                    </button>
+                </div>
+            `)
+            .openOn(map);
+    }
+});
 
         // Step 2: Add the tile layer (the actual map images from OpenStreetMap)
         // Define multiple basemap options
@@ -603,6 +729,111 @@ function rotateMap(angle) {
     const mapContainer = document.getElementById('map');
     mapContainer.style.transform = `rotate(${angle}deg)`;
     mapContainer.style.transition = 'transform 0.5s ease';
+}
+
+// Tent/Venue Data
+const tentData = [
+    {name: "Marstall Festzelt", type: "Large Tents", lat: 48.135665, lng: 11.549045, url: "https://www.marstall-oktoberfest.de/index.html"},
+    {name: "Armbrustschutzenzelt", type: "Large Tents", lat: 48.134885, lng: 11.548916, url: "https://www.armbrustschuetzenzelt.de/"},
+    {name: "Hoftbrau-Festzelt", type: "Large Tents", lat: 48.133814, lng: 11.548733, url: "https://www.hb-festzelt.de/"},
+    {name: "Hacker-Festzelt", type: "Large Tents", lat: 48.132873, lng: 11.548561, url: "https://hacker-festzelt.de/en/"},
+    {name: "Schottenhame-Festzelt", type: "Large Tents", lat: 48.131964, lng: 11.548433, url: "https://festhalle-schottenhamel.de/"},
+    {name: "Paulaner-Festzelt", type: "Large Tents", lat: 48.130897, lng: 11.548025, url: "https://www.paulanerfestzelt.de/oktoberfestzelt/"},
+    {name: "Schutzen-Festzelt", type: "Large Tents", lat: 48.130826, lng: 11.546877, url: "https://www.oktoberfest.de/en/beer-tents/big-tents/schuetzen-festzelt"},
+    {name: "Kafer Wiesn-Schanke", type: "Large Tents", lat: 48.129888, lng: 11.547392, url: "https://www.oktoberfest.de/en/beer-tents/big-tents/kaefer-wiesn-schaenke"},
+    {name: "Kufflers Weinzelt", type: "Large Tents", lat: 48.129652, lng: 11.550235, url: "https://www.weinzelt.com/en/"},
+    {name: "Lowenbrau-Festzelt", type: "Large Tents", lat: 48.130783, lng: 11.549816, url: "https://www.oktoberfest.de/en/beer-tents/big-tents/loewenbraeu-festzelt"},
+    {name: "Festzelt Pschorr Braurosl", type: "Large Tents", lat: 48.131828, lng: 11.55002, url: "https://www.braeurosl.de/"},
+    {name: "Augustiner Festhalte", type: "Large Tents", lat: 48.132993, lng: 11.550203, url: "https://www.festhalle-augustiner.com/"},
+    {name: "Ochsenbraterei", type: "Large Tents", lat: 48.134053, lng: 11.550525, url: "https://www.ochsenbraterei.de/"},
+    {name: "Fischer-Vroni", type: "Large Tents", lat: 48.135213, lng: 11.550724, url: "https://www.fischer-vroni.de/de/willkommen.html"},
+    {name: "Volkssangerzelt Schutzsenliesi", type: "Large Tents", lat: 48.128197, lng: 11.546117, url: "https://www.oktoberfest.de/bierzelte/grosse-zelte/schuetzenlisl"},
+    {name: "Musikantenzelt Boandikramerei", type: "Large Tents", lat: 48.128898, lng: 11.546331, url: "https://boandlkramerei.bayern/"},
+    {name: "Festzelt Tradition", type: "Large Tents", lat: 48.128655, lng: 11.54779, url: "https://www.oktoberfestzelt-tradition.de/"},
+    {name: "Musuemszelt", type: "Large Tents", lat: 48.127753, lng: 11.547575, url: "https://oktoberfest-guide.com/oide-wiesn/museumszelt/"},
+    {name: "Feisingers Kas- und Weinstubn", type: "Small Tents", lat: 48.130938, lng: 11.548528, url: "https://wiesnzelt.de"},
+    {name: "Glöckle Wirt", type: "Small Tents", lat: 48.131224, lng: 11.548507, url: "https://www.gloeckle-wirt.de"},
+    {name: "Heinz Wurst- und Hühnerbraterei", type: "Small Tents", lat: 48.131704, lng: 11.548593, url: "https://www.heinz-huehnerbraterei.de"},
+    {name: "Hühnerbraterei Poschner", type: "Small Tents", lat: 48.132656, lng: 11.548754, url: "https://poschners.de"},
+    {name: "Goldener Hahn", type: "Small Tents", lat: 48.133222, lng: 11.548882, url: "https://www.ables-goldener-hahn.de"},
+    {name: "Hochreiters Haxenbraterei", type: "Small Tents", lat: 48.133588, lng: 11.548969, url: "https://haxnbraterei.de"},
+    {name: "Schiebl's Kaffeehaferl", type: "Small Tents", lat: 48.134204, lng: 11.549098, url: "https://schiebls-cafebetriebe.de"},
+    {name: "Vinzenzmurr Metzger Stubn", type: "Small Tents", lat: 48.134583, lng: 11.549141, url: "https://vinzenzmurr.de/metzger-stubn/"},
+    {name: "Münchner Stubn", type: "Small Tents", lat: 48.131183, lng: 11.549182, url: "https://muenchnerstubn-festzelt.de"},
+    {name: "Kalbsbraterei", type: "Small Tents", lat: 48.132171, lng: 11.549418, url: "http://kalbsbraterei.de"},
+    {name: "Ammer Hühner- und Entenbraterei", type: "Small Tents", lat: 48.133373, lng: 11.549633, url: "https://www.ammer-wiesn.de"},
+    {name: "Bodo's Cafézelt & Cocktailbar", type: "Small Tents", lat: 48.133223, lng: 11.550642, url: "https://www.bodos.de"},
+    {name: "Münchner Knodelei", type: "Small Tents", lat: 48.128942, lng: 11.549752, url: "https://muenchner-knoedelei.de"},
+    {name: "Richart's Café Kaiserschmarn", type: "Small Tents", lat: 48.130443, lng: 11.550402, url: "https://www.rischart.de/oktoberfest/"},
+    {name: "Café Theres'", type: "Small Tents", lat: 48.131942, lng: 11.550739, url: "https://cafe-theres.de"},
+    {name: "Heimer Enten- und Hühnerbraterei", type: "Small Tents", lat: 48.133252, lng: 11.551007, url: "http://heimer-entenbraterei.de"},
+    {name: "Wildstuben", type: "Small Tents", lat: 48.129737, lng: 11.552348, url: "https://wildstuben.de"},
+    {name: "Zur Bratwurst", type: "Small Tents", lat: 48.130364, lng: 11.552922, url: "https://zur-bratwurst.de"},
+    {name: "Fisch-Bäda", type: "Small Tents", lat: 48.131316, lng: 11.552089, url: "https://fisch-baeda.de"},
+    {name: "Wirtshaus im Schichtl", type: "Small Tents", lat: 48.133727, lng: 11.552494, url: "https://www.schichtl.de"},
+    {name: "Wiesn Guglhupf Café-Dreh-Bar", type: "Small Tents", lat: 48.134232, lng: 11.552579, url: "http://www.wiesn-guglhupf.de"}
+];
+
+// Store tent markers globally
+let tentMarkers = [];
+
+
+// Function to create tent markers
+function createTentMarkers() {
+    // Clear existing tent markers
+    tentMarkers.forEach(marker => map.removeLayer(marker));
+    tentMarkers = [];
+    
+    tentData.forEach(tent => {
+        // Create custom icon based on type
+        const icon = L.divIcon({
+            className: 'tent-marker',
+            html: `<div style="
+                background-color: ${tent.type === 'Large Tents' ? '#FF6B35' : '#FFD700'};
+                color: white;
+                width: ${tent.type === 'Large Tents' ? '40px' : '30px'};
+                height: ${tent.type === 'Large Tents' ? '40px' : '30px'};
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: ${tent.type === 'Large Tents' ? '20px' : '16px'};
+                border: 2px solid white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            ">🏕️</div>`,
+            iconSize: [tent.type === 'Large Tents' ? 40 : 30, tent.type === 'Large Tents' ? 40 : 30],
+            iconAnchor: [tent.type === 'Large Tents' ? 20 : 15, tent.type === 'Large Tents' ? 20 : 15]
+        });
+        
+        // Create marker
+        const marker = L.marker([tent.lat, tent.lng], {icon: icon});
+        
+        // Add tooltip (shows on hover)
+        marker.bindTooltip(tent.name, {
+            permanent: false,
+            direction: 'top'
+        });
+        
+        // Add popup (shows on click)
+        marker.bindPopup(`
+            <div style="font-family: Arial; min-width: 200px;">
+                <h3 style="margin: 0 0 10px 0; color: #FF6B35; font-size: 16px;">
+                    🏕️ ${tent.name}
+                </h3>
+                <p style="margin: 0 0 10px 0; font-size: 12px; color: #666;">
+                    <strong>Type:</strong> ${tent.type}
+                </p>
+                <a href="${tent.url}" target="_blank" 
+                   style="display: inline-block; background: #0066cc; color: white; 
+                          padding: 8px 15px; text-decoration: none; border-radius: 4px; 
+                          font-size: 13px; font-weight: bold;">
+                    Visit Website →
+                </a>
+            </div>
+        `);
+        
+        tentMarkers.push(marker);
+    });
 }
 
         // Load the GeoJSON file
@@ -807,9 +1038,10 @@ fetch('Theresienwiese_compressed.tif')
     window.tourLayerReady = true;
     window.currentRotation = 0;
 
-    //Update button to show it's ready
+    // FIX 2: Update button to show it's ready - added display: flex
     const tourBtn = document.getElementById('virtualTourBtn');
-    tourBtn.textContent = '📷 Virtual Tour';
+    tourBtn.textContent = 'Virtual Tent Tour';
+    tourBtn.style.display = 'flex';  // Make button visible
     tourBtn.style.opacity = '1';
 
 // Add to layer control so users can toggle it on/off
@@ -830,11 +1062,17 @@ baseMaps["Theresienwiese Image"] = geoRasterLayer;
       L.control.layers(baseMaps).addTo(map);
       
       console.log('GeoTIFF loaded successfully!');
+      // Create tent markers immediately (ready to show when layer toggles)
+      createTentMarkers();
+      console.log('Tent markers created:', tentMarkers.length);
+
+     
     });
   })
   .catch(error => {
     console.error('Error loading GeoTIFF:', error);
   });
+
 
 
         // Add click handlers to legend items for filtering
@@ -1024,76 +1262,30 @@ filterByYearRange(1810, 2024);
     .catch(error => {
         console.error('Error loading GeoJSON:', error);
     });
-// Virtual Tour Button - Opens Google Street View of Theresienwiese
+
+// Tent marker event listeners (keeping these as backup for layer control)
+map.on('overlayadd', function(e) {
+    console.log('Layer added:', e.name);
+    if (e.name === 'Theresienwiese Image') {
+        console.log('Creating tent markers...');
+        createTentMarkers();
+        tentMarkers.forEach(marker => marker.addTo(map));
+        console.log('Tent markers added:', tentMarkers.length);
+    }
+});
+
+map.on('overlayremove', function(e) {
+    console.log('Layer removed:', e.name);
+    if (e.name === 'Theresienwiese Image') {
+        console.log('Removing tent markers...');
+        tentMarkers.forEach(marker => map.removeLayer(marker));
+    }
+});
+
 // Virtual Tour Button - Toggle Theresienwiese Overlay
 let tourActive = false;
 
-document.getElementById('virtualTourBtn').addEventListener('click', function() {
-    if (!window.tourLayerReady) {
-    alert('Virtual tour is loading... (6.9MB file). Please wait a moment and try again.');
-    return;
-    }
-    
-if (tourActive) {
-    // Turn OFF virtual tour
-    map.removeLayer(window.theresienweiseLayer);
-    this.style.backgroundColor = '#0066cc';
-    this.innerHTML = '📷 Virtual Tour';
-    tourActive = false;
-
-    // Hide rotation controls
-    document.getElementById('rotationControls').style.display = 'none';
-
-    // Show basemap again
-baseMaps["Streets"].addTo(map);
-    
-    // Show basemap again
-    baseMaps["Streets"].addTo(map);
-    
-    // Show basemap again
-    baseMaps["Streets"].addTo(map);
-    
-    // Zoom back to show all markers
-    const allMarkers = [];
-    Object.values(markersByCategory).forEach(markers => {
-        allMarkers.push(...markers);
-    });
-    if (allMarkers.length > 0) {
-        const group = L.featureGroup(allMarkers);
-        map.fitBounds(group.getBounds(), { 
-            padding: [50, 50],
-            maxZoom: 13
-        });
-    }
-} else {
-    // Turn ON virtual tour
-    
-    // Hide all basemaps first
-    map.eachLayer(function(layer) {
-        if (layer instanceof L.TileLayer) {
-            map.removeLayer(layer);
-        }
-    });
-    
-    // Show only Theresienwiese image
-    map.addLayer(window.theresienweiseLayer);
-    this.style.backgroundColor = '#FF6B35'; // Orange when active
-    this.innerHTML = '✕ Exit Tour';
-    tourActive = true;
-
-    // Show rotation controls
-    document.getElementById('rotationControls').style.display = 'flex';
-    
-    // Zoom to fit the overlay
-    if (window.theresienweiseBounds) {
-        const bounds = [
-            [window.theresienweiseBounds[1], window.theresienweiseBounds[0]], // SW corner
-            [window.theresienweiseBounds[3], window.theresienweiseBounds[2]]  // NE corner
-        ];
-        map.fitBounds(bounds, { padding: [30, 30] });
-    }
-}
-// Rotation button handlers
+// Set up rotation button handlers ONCE (outside the click handler)
 document.getElementById('rotateLeft').addEventListener('click', function() {
     window.currentRotation -= 90;
     if (window.currentRotation < 0) window.currentRotation = 270;
@@ -1106,8 +1298,89 @@ document.getElementById('rotateRight').addEventListener('click', function() {
     rotateMap(window.currentRotation);
 });
 
+document.getElementById('virtualTourBtn').addEventListener('click', function() {
+    if (!window.tourLayerReady) {
+        alert('Virtual tour is loading... (6.9MB file). Please wait a moment and try again.');
+        return;
+    }
+    
+    if (tourActive) {
+        // Turn OFF virtual tour
+        map.removeLayer(window.theresienweiseLayer);
+        this.style.backgroundColor = '#0066cc';
+        this.innerHTML = 'Virtual Tent Tour';
+        tourActive = false;
 
+        // Hide rotation controls
+        document.getElementById('rotationControls').style.display = 'none';
+        
+        // Reset rotation
+        window.currentRotation = 0;
+        rotateMap(0);
 
+        // FIX 3: Remove tent markers when exiting tour
+        tentMarkers.forEach(marker => map.removeLayer(marker));
+
+        // Hide tent legend
+        document.getElementById('tentLegend').style.display = 'none';
+
+        // Show main legend
+        document.querySelector('.legend-box').style.display = 'grid';
+
+        // Show basemap again (fixed: only once now)
+        baseMaps["Streets"].addTo(map);
+        
+        // Zoom back to show all markers
+        const allMarkers = [];
+        Object.values(markersByCategory).forEach(markers => {
+            allMarkers.push(...markers);
+        });
+        if (allMarkers.length > 0) {
+            const group = L.featureGroup(allMarkers);
+            map.fitBounds(group.getBounds(), { 
+                padding: [50, 50],
+                maxZoom: 13
+            });
+        }
+    } else {
+        // Turn ON virtual tour
+        
+        // Hide all basemaps first
+        map.eachLayer(function(layer) {
+            if (layer instanceof L.TileLayer) {
+                map.removeLayer(layer);
+            }
+        });
+        
+        // Show only Theresienwiese image
+        map.addLayer(window.theresienweiseLayer);
+        this.style.backgroundColor = '#FF6B35'; // Orange when active
+        this.innerHTML = '✕ Exit Tour';
+        tourActive = true;
+
+        // Show tent legend
+        document.getElementById('tentLegend').style.display = 'block';
+
+        // Hide main legend
+        document.querySelector('.legend-box').style.display = 'none';
+
+        // FIX 4: Add tent markers when tour activates
+        tentMarkers.forEach(marker => marker.addTo(map));
+
+        console.log('Tour activated - tent markers added:', tentMarkers.length);
+
+        // Show rotation controls
+        document.getElementById('rotationControls').style.display = 'flex';
+        
+        // Zoom to fit the overlay
+        if (window.theresienweiseBounds) {
+            const bounds = [
+                [window.theresienweiseBounds[1], window.theresienweiseBounds[0]], // SW corner
+                [window.theresienweiseBounds[3], window.theresienweiseBounds[2]]  // NE corner
+            ];
+            map.fitBounds(bounds, { padding: [30, 30] });
+        }
+    }
 });
     </script>
 </body>
